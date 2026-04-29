@@ -20,21 +20,28 @@
 
 ## Screenshots
 
-<table>
-<tr>
-<td align="center"><b>Task List</b><br><img src="./assets/screenshots/main-dark.png" width="420"/></td>
-<td align="center"><b>Create New Task</b><br><img src="./assets/screenshots/create-task.png" width="420"/></td>
-</tr>
+### Task List
+<img src="./assets/screenshots/main-dark.png" width="600" alt="Task List Screen"/>
 
-<tr>
-<td align="center"><b>Task View</b><br><img src="./assets/screenshots/task-view.png" width="420"/></td>
-<td align="center"><b>Calendar View</b><br><img src="./assets/screenshots/calendar-view.png" width="420"/></td>
-</tr>
+---
 
-<tr>
-<td align="center"><b>Themes</b><br><img src="./assets/screenshots/themes.png" width="840"/></td>
-</tr>
-</table>
+### Create New Task
+<img src="./assets/screenshots/create-task.png" width="600" alt="Create New Task Screen"/>
+
+---
+
+### Task View
+<img src="./assets/screenshots/task-view.png" width="600" alt="Task View Screen"/>
+
+---
+
+### Calendar View
+<img src="./assets/screenshots/calendar-view.png" width="600" alt="Calendar View Screen"/>
+
+---
+
+### Themes
+<img src="./assets/screenshots/themes.png" width="840" alt="Themes Selection Screen"/>
 
 ---
 
