@@ -7,6 +7,13 @@
   "name": "Gitwingo",
   "email": "heygitwingo@gmail.com"
   },
+  "build": {
+  "appId": "com.gitwingo.taskwingo",
+  "win": {
+    "icon": "src/public/icon.ico",
+    "target": "nsis"
+  }
+},
   "scripts": {
     "dev": "electron-vite dev",
     "dev:clean": "rimraf out && electron-vite dev",
