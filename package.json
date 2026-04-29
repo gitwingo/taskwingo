@@ -8,10 +8,20 @@
   "email": "heygitwingo@gmail.com"
   },
   "build": {
-  "appId": "com.gitwingo.taskwingo",
+  "appId": "com.taskwingo.app",
+  "productName": "taskwingo",
+  "directories": {
+    "output": "dist"
+  },
   "win": {
-    "icon": "src/public/icon.ico",
-    "target": "nsis"
+    "icon": "build/icon.ico",
+    "target": [
+      "nsis"
+    ]
+  },
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false
   }
 },
   "scripts": {
