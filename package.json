@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Taskwingo - Personal Task Manager by Gitwingo",
   "main": "out/main/main.js",
+  "author": {
+  "name": "Gitwingo",
+  "email": "heygitwingo@gmail.com"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "dev:clean": "rimraf out && electron-vite dev",
