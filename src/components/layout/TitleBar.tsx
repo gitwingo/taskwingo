@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import appLogo from '../../public/logo.png'
 
 export default function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
@@ -32,7 +33,7 @@ export default function TitleBar() {
       }}>
         {!iconError ? (
           <img
-            src="/logo.ico"
+            src={appLogo}
             alt=""
             onError={() => setIconError(true)}
             style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.8 }}

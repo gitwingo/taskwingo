@@ -11,17 +11,24 @@
   "appId": "com.taskwingo.app",
   "productName": "taskwingo",
   "directories": {
-    "output": "dist"
+    "output": "dist",
+    "app": "."
   },
+  "files": [
+    "out/**/*",
+    "package.json"
+  ],
   "win": {
-    "icon": "build/icon.ico",
+    "icon": "build/logo.ico",
     "target": [
       "nsis"
     ]
   },
   "nsis": {
-    "oneClick": true,
-    "perMachine": false
+    "oneClick": false,
+    "perMachine": true,
+    "allowElevation": true,
+    "allowToChangeInstallationDirectory": true
   }
 },
   "scripts": {

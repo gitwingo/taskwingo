@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { useAppStore } from '../../store/appStore'
+import appLogo from '../../public/logo.png'
+import gitwingoLogo from '../../public/gitwingo_logo.jpg'
 
 const LINKS = [
   { label: 'GitHub', url: 'https://github.com/gitwingo', icon: 'G' },
@@ -40,7 +42,7 @@ export default function AboutModal() {
             }}>
               {!appIconError ? (
                 <img
-                  src="/logo.ico"
+                  src={appLogo}
                   alt="Taskwingo"
                   onError={() => setAppIconError(true)}
                   style={{ width: 52, height: 52, objectFit: 'contain' }}
@@ -75,7 +77,7 @@ export default function AboutModal() {
             }}>
               {!logoError ? (
                 <img
-                  src="/gitwingo_logo.jpg"
+                  src={gitwingoLogo}
                   alt="Gitwingo"
                   onError={() => setLogoError(true)}
                   style={{
