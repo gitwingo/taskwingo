@@ -21,22 +21,22 @@
 ## Screenshots
 
 ### Task List
-<img src="./assets/screenshots/main-dark.png" width="600" alt="Task List Screen"/>
+<img src="./assets/screenshots/main-dark.png" width="840" alt="Task List Screen"/>
 
 ---
 
 ### Create New Task
-<img src="./assets/screenshots/create-task.png" width="600" alt="Create New Task Screen"/>
+<img src="./assets/screenshots/create-task.png" width="840" alt="Create New Task Screen"/>
 
 ---
 
 ### Task View
-<img src="./assets/screenshots/task-view.png" width="600" alt="Task View Screen"/>
+<img src="./assets/screenshots/task-view.png" width="840" alt="Task View Screen"/>
 
 ---
 
 ### Calendar View
-<img src="./assets/screenshots/calendar-view.png" width="600" alt="Calendar View Screen"/>
+<img src="./assets/screenshots/calendar-view.png" width="840" alt="Calendar View Screen"/>
 
 ---
 
