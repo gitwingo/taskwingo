@@ -15,7 +15,20 @@
 [Download](#installation) · [Features](#features) · [Screenshots](#screenshots) · [Build from Source](#build-from-source) · [Support](#support)
 
 </div>
-
+<div align="center">
+  <a href="https://github.com/gitwingo/taskwingo/releases/download/v1.0.0/taskwingo.Setup.1.0.0.exe" 
+     style="display: inline-block; 
+            padding: 15px 30px; 
+            font-size: 18px; 
+            color: white; 
+            background-color: #007bff; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            font-weight: bold;
+            font-family: sans-serif;">
+    Download Latest for Windows
+  </a>
+</div>
 ---
 
 ## Screenshots
