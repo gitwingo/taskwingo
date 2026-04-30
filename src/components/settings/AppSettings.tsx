@@ -5,7 +5,7 @@ import { Theme } from '../../types'
 const THEMES: { id: Theme; label: string; desc: string; preview: string }[] = [
   { id: 'dark',   label: 'Dark',   desc: 'Easy on the eyes',  preview: 'linear-gradient(135deg,#0d0d0f,#1a1a1e)' },
   { id: 'light',  label: 'Light',  desc: 'Clean and bright',  preview: 'linear-gradient(135deg,#f8f8fc,#ffffff)' },
-  { id: 'ghibli', label: 'Ghibli', desc: 'Soft midnight blue', preview: 'linear-gradient(135deg,#1a1f2e,#2e3a54)' },
+  { id: 'night', label: 'Night', desc: 'Soft midnight blue', preview: 'linear-gradient(135deg,#1a1f2e,#2e3a54)' },
   { id: 'summer', label: 'Summer', desc: 'Warm and energetic', preview: 'linear-gradient(135deg,#fff8f0,#ffe4d4)' }
 ]
 

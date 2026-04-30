@@ -5,7 +5,7 @@ export function useTheme() {
   const { theme, setTheme } = useAppStore()
 
   const toggleTheme = () => {
-    const cycle: Theme[] = ['dark', 'light', 'ghibli', 'summer']
+    const cycle: Theme[] = ['dark', 'light', 'night', 'summer']
     const next = cycle[(cycle.indexOf(theme) + 1) % cycle.length]
     setTheme(next)
   }

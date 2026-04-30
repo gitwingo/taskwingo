@@ -1,6 +1,6 @@
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
-export type Theme = 'dark' | 'light' | 'ghibli' | 'summer'
+export type Theme = 'dark' | 'light' | 'night' | 'summer'
 export type ViewMode = 'list' | 'kanban' | 'calendar'
 export type RecurRule = 'daily' | 'weekly' | 'monthly' | 'weekdays' | null
 

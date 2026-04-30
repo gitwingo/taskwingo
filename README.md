@@ -80,7 +80,7 @@ Taskwingo is a fully offline, privacy-first desktop task manager. All your data 
 - Custom accent color per profile
 
 ### App
-- **4 themes** — Dark, Light, Ghibli, Summer
+- **4 themes** — Dark, Light, Night, Summer
 - Custom accent color (11 choices)
 - Minimize to system tray — app keeps running in the background
 - Window size and position remembered between sessions

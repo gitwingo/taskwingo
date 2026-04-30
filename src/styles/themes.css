@@ -74,8 +74,8 @@
   --scrollbar-track: transparent;
 }
 
-/* Ghibli Theme */
-[data-theme="ghibli"] {
+/* Night Theme */
+[data-theme="night"] {
   --bg-primary: #1a1f2e;
   --bg-secondary: #1e2535;
   --bg-tertiary: #232b3e;

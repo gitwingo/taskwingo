@@ -5,7 +5,7 @@ import { Theme } from '../../types'
 const THEMES: { id: Theme; label: string; color: string }[] = [
   { id: 'dark', label: 'Dark', color: '#1a1a1e' },
   { id: 'light', label: 'Light', color: '#f0f0f6' },
-  { id: 'ghibli', label: 'Ghibli', color: '#1e2535' },
+  { id: 'night', label: 'Night', color: '#1e2535' },
   { id: 'summer', label: 'Summer', color: '#ffe4d4' }
 ]
 
