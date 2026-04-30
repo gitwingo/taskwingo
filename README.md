@@ -15,6 +15,7 @@
 [Download](#installation) · [Features](#features) · [Screenshots](#screenshots) · [Build from Source](#build-from-source) · [Support](#support)
 
 </div>
+
 <div align="center">
   <a href="https://github.com/gitwingo/taskwingo/releases/download/v1.0.0/taskwingo.Setup.1.0.0.exe" 
      style="display: inline-block; 
@@ -29,6 +30,7 @@
     Download Latest for Windows
   </a>
 </div>
+
 ---
 
 ## Screenshots
