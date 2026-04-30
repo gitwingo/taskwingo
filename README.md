@@ -16,20 +16,11 @@
 
 </div>
 
-<div align="center">
-  <a href="https://github.com/gitwingo/taskwingo/releases/download/v1.0.0/taskwingo.Setup.1.0.0.exe" 
-     style="display: inline-block; 
-            padding: 15px 30px; 
-            font-size: 18px; 
-            color: white; 
-            background-color: #007bff; 
-            text-decoration: none; 
-            border-radius: 8px; 
-            font-weight: bold;
-            font-family: sans-serif;">
-    Download Latest for Windows
+<p align="center">
+  <a href="https://github.com/gitwingo/taskwingo/releases/download/v1.0.0/taskwingo.Setup.1.0.0.exe">
+    <img src="https://img.shields.io/badge/Download_Latest_for_Windows-007bff?style=for-the-badge&logo=windows&logoColor=white" alt="Download Button">
   </a>
-</div>
+</p>
 
 ---
 
