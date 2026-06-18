@@ -8,14 +8,14 @@ interface Props {
 }
 
 type FormatState = {
-  bold: boolean; italic: boolean; underline: boolean
+  bold: boolean; italic: boolean; underline: boolean; strikethrough: boolean
   unorderedList: boolean; orderedList: boolean
 }
 
 export default function RichTextEditor({ value, onChange, placeholder, minHeight = 100 }: Props) {
   const editorRef = useRef<HTMLDivElement>(null)
   const isInitialized = useRef(false)
-  const [fmt, setFmt] = useState<FormatState>({ bold: false, italic: false, underline: false, unorderedList: false, orderedList: false })
+  const [fmt, setFmt] = useState<FormatState>({ bold: false, italic: false, underline: false, strikethrough: false, unorderedList: false, orderedList: false })
 
   // Initialize content only once on mount — prevents reverse-typing bug
   useEffect(() => {
@@ -30,6 +30,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       bold: document.queryCommandState('bold'),
       italic: document.queryCommandState('italic'),
       underline: document.queryCommandState('underline'),
+      strikethrough: document.queryCommandState('strikeThrough'),
       unorderedList: document.queryCommandState('insertUnorderedList'),
       orderedList: document.queryCommandState('insertOrderedList'),
     })
@@ -62,6 +63,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       if (e.key === 'b') { e.preventDefault(); exec('bold') }
       if (e.key === 'i') { e.preventDefault(); exec('italic') }
       if (e.key === 'u') { e.preventDefault(); exec('underline') }
+      if (e.shiftKey && e.key === 'S') { e.preventDefault(); exec('strikeThrough') }
     }
   }, [exec])
 
@@ -99,6 +101,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         <ToolBtn cmd="bold"                  label="B"      active={fmt.bold} />
         <ToolBtn cmd="italic"                label="I"      active={fmt.italic} />
         <ToolBtn cmd="underline"             label="U"      active={fmt.underline} />
+        <ToolBtn cmd="strikeThrough"         label="S̶"     active={fmt.strikethrough} />
         <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
         <ToolBtn cmd="insertUnorderedList"   label="• List" active={fmt.unorderedList} />
         <ToolBtn cmd="insertOrderedList"     label="1. List" active={fmt.orderedList} />
@@ -137,6 +140,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         [contenteditable] b, [contenteditable] strong { font-weight: 700; }
         [contenteditable] i, [contenteditable] em     { font-style: italic; }
         [contenteditable] u  { text-decoration: underline; }
+        [contenteditable] s, [contenteditable] strike { text-decoration: line-through; }
       `}</style>
     </div>
   )

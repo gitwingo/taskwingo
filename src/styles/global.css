@@ -1,5 +1,16 @@
 @import './themes.css';
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Self-hosted Inter font — replaces the old Google Fonts CDN @import.
+   No network call is made; if the font files below are missing,
+   the font-family fallback list still renders a clean system font. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./fonts/Inter-Variable.woff2') format('woff2-variations'),
+       url('./fonts/Inter-Variable.woff2') format('woff2');
+}
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -78,6 +89,25 @@ input::placeholder, textarea::placeholder {
 
 textarea {
   resize: vertical;
+}
+
+/* Native date/time picker icon — was effectively invisible because the app
+   never set `color-scheme`, so Chromium rendered a dark calendar glyph on
+   a dark background. The `color-scheme` rules in themes.css fix the base
+   icon color per theme; this adds a hover affordance and a touch more size
+   so people notice it's clickable. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 3px;
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background: var(--bg-hover);
 }
 
 /* Utility classes */
@@ -271,4 +301,29 @@ textarea {
 .empty-state-desc {
   font-size: 13px;
   max-width: 280px;
+}
+
+/* Rich notes view — fixes bullet/number lists clipping outside the box */
+.rich-notes-view ul,
+.rich-notes-view ol {
+  list-style-position: inside;
+  padding-left: 4px;
+  margin: 4px 0;
+}
+.rich-notes-view li {
+  padding-left: 2px;
+  word-break: break-word;
+}
+.rich-notes-view ol {
+  counter-reset: list-counter;
+}
+.rich-notes-view a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.rich-notes-view h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 6px 0 2px;
+  color: var(--text-primary);
 }

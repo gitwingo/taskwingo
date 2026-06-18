@@ -6,12 +6,14 @@ import TaskFilters from './TaskFilters'
 import KanbanView from './KanbanView'
 import CalendarView from './CalendarView'
 import ProjectPanel from './ProjectPanel'
+import ArchiveView from './ArchiveView'
 
 interface Props { profile: Profile }
 
 export default function TaskList({ profile }: Props) {
   const { tasks, setTasks, filters, setTaskModalOpen, setEditingTaskId, upsertTask, projects, setProjects, viewMode, setViewMode } = useAppStore()
   const [showProjects, setShowProjects] = useState(false)
+  const [showArchive, setShowArchive] = useState(false)
 
   const profileTasks = tasks.filter(t => t.profile_id === profile.id)
 
@@ -30,23 +32,16 @@ export default function TaskList({ profile }: Props) {
     load()
   }, [profile.id])
 
-  // Reminder checker
-  useEffect(() => {
-    const check = () => {
-      const now = Math.floor(Date.now() / 1000)
-      profileTasks.forEach(t => {
-        if (t.reminder_at && t.status !== 'done') {
-          const diff = t.reminder_at - now
-          if (diff >= 0 && diff < 60) {
-            window.electronAPI.notify.send(`Reminder: ${t.title}`, t.deadline ? `Due ${new Date(t.deadline * 1000).toLocaleDateString()}` : 'Task reminder')
-          }
-        }
-      })
-    }
-    const interval = setInterval(check, 30000)
-    return () => clearInterval(interval)
-  }, [profileTasks])
-
+  // Reminder + deadline notifications are now handled centrally in the
+  // main process (see electron/reminders/checkReminders.ts), running
+  // across ALL profiles regardless of which one is selected here. This
+  // used to be a renderer-side effect scoped to just this component's
+  // `profile` prop — meaning reminders for every OTHER profile silently
+  // stopped firing the moment you switched away from them, since only one
+  // <TaskList> is ever mounted at a time. Removed entirely rather than
+  // left running alongside the new centralized checker, since both would
+  // otherwise double-fire notifications for whichever profile happens to
+  // be selected.
   const filteredTasks = useMemo(() => {
     let list = [...profileTasks]
     if (filters.search) {
@@ -113,6 +108,7 @@ export default function TaskList({ profile }: Props) {
               ))}
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => setShowProjects(true)} title="Manage Projects">◆ Projects</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowArchive(true)} title="View archived tasks">📦 Archive</button>
             <ExportMenu profileId={profile.id} />
             <ImportButton profileId={profile.id} />
             <button className="btn btn-primary" onClick={() => { setEditingTaskId(null); setTaskModalOpen(true) }}>+ New Task</button>
@@ -154,6 +150,7 @@ export default function TaskList({ profile }: Props) {
       )}
 
       {showProjects && <ProjectPanel profileId={profile.id} onClose={() => setShowProjects(false)} />}
+      {showArchive && <ArchiveView profileId={profile.id} onClose={() => setShowArchive(false)} />}
     </div>
   )
 }
@@ -169,9 +166,29 @@ function ExportMenu({ profileId }: { profileId: number }) {
       filters: [{ name: names[type], extensions: [exts[type]] }]
     })
     if (!result.canceled && result.filePath) {
-      const fn = type === 'profile' ? window.electronAPI.export.toProfile : (window.electronAPI.export as any)[`to${type.charAt(0).toUpperCase()+type.slice(1)}`]
-      const res = await fn(profileId, result.filePath)
-      if (!res?.success) alert('Export failed: ' + (res?.error || 'unknown'))
+      // Previously built this key dynamically as `to${Capitalized(type)}`,
+      // which produces 'toCsv', 'toJson', 'toPdf' — none of which match the
+      // actual exposed names 'toCSV', 'toJSON', 'toPDF' (acronyms stay
+      // fully uppercase in preload.ts, but the capitalize-first-letter
+      // logic only uppercases one letter). Looking up a nonexistent
+      // property silently returns undefined, so `fn` was undefined for
+      // every type except 'profile' — which only worked because it had
+      // its own explicit ternary branch that bypassed the broken dynamic
+      // lookup entirely. Calling undefined as a function threw before the
+      // try/catch's error alert could ever run, which is why nothing
+      // appeared to happen — the failure was silent from the user's side.
+      const exportFns: Record<typeof type, (profileId: number, savePath: string) => Promise<{ success: boolean; error?: string }>> = {
+        csv: window.electronAPI.export.toCSV,
+        json: window.electronAPI.export.toJSON,
+        pdf: window.electronAPI.export.toPDF,
+        profile: window.electronAPI.export.toProfile
+      }
+      try {
+        const res = await exportFns[type](profileId, result.filePath)
+        if (!res?.success) alert('Export failed: ' + (res?.error || 'unknown error'))
+      } catch (e: any) {
+        alert('Export failed: ' + (e?.message || 'unknown error'))
+      }
     }
   }
   return (

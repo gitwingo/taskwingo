@@ -26,7 +26,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     create: (task: any) => ipcRenderer.invoke('tasks:create', task),
     update: (id: number, data: any) => ipcRenderer.invoke('tasks:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('tasks:delete', id),
-    reorder: (updates: { id: number; sort_order: number }[]) => ipcRenderer.invoke('tasks:reorder', updates)
+    reorder: (updates: { id: number; sort_order: number }[]) => ipcRenderer.invoke('tasks:reorder', updates),
+    archive: (id: number) => ipcRenderer.invoke('tasks:archive', id),
+    unarchive: (id: number) => ipcRenderer.invoke('tasks:unarchive', id),
+    getArchived: (profileId: number) => ipcRenderer.invoke('tasks:get-archived', profileId)
   },
   subtasks: {
     create: (taskId: number, title: string) => ipcRenderer.invoke('subtasks:create', taskId, title),
@@ -72,5 +75,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   notify: {
     send: (title: string, body: string) => ipcRenderer.invoke('notify:send', title, body)
+  },
+  updates: {
+    openReleasesPage: () => ipcRenderer.invoke('updates:open-releases-page'),
+    onAvailable: (cb: (info: { version: string; name: string; url: string }) => void) => {
+      ipcRenderer.on('update:available', (_, info) => cb(info))
+      return () => ipcRenderer.removeAllListeners('update:available')
+    }
+  },
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:get-version')
+  },
+  prefs: {
+    getMinimizeToTray: () => ipcRenderer.invoke('prefs:get-minimize-to-tray'),
+    setMinimizeToTray: (value: boolean) => ipcRenderer.invoke('prefs:set-minimize-to-tray', value),
+    getCheckForUpdates: () => ipcRenderer.invoke('prefs:get-check-for-updates'),
+    setCheckForUpdates: (value: boolean) => ipcRenderer.invoke('prefs:set-check-for-updates', value)
+  },
+  zoom: {
+    get: () => ipcRenderer.invoke('zoom:get'),
+    in: () => ipcRenderer.invoke('zoom:in'),
+    out: () => ipcRenderer.invoke('zoom:out'),
+    reset: () => ipcRenderer.invoke('zoom:reset'),
+    set: (value: number) => ipcRenderer.invoke('zoom:set', value),
+    onChanged: (cb: (zoomFactor: number) => void) => {
+      ipcRenderer.on('zoom:changed', (_, val) => cb(val))
+      return () => ipcRenderer.removeAllListeners('zoom:changed')
+    }
   }
 })

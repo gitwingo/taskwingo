@@ -6,12 +6,36 @@ export function registerTaskHandlers(): void {
 
   ipcMain.handle('tasks:get-all', (_, profileId: number) => {
     const tasks = db()
-      .prepare('SELECT * FROM tasks WHERE profile_id = ? ORDER BY sort_order ASC, created_at ASC')
+      .prepare('SELECT * FROM tasks WHERE profile_id = ? AND (archived IS NULL OR archived = 0) ORDER BY sort_order ASC, created_at ASC')
       .all(profileId)
     return tasks.map((t: any) => ({
       ...t,
       subtasks: db().prepare('SELECT * FROM subtasks WHERE task_id = ? ORDER BY sort_order ASC').all(t.id)
     }))
+  })
+
+  ipcMain.handle('tasks:get-archived', (_, profileId: number) => {
+    const tasks = db()
+      .prepare('SELECT * FROM tasks WHERE profile_id = ? AND archived = 1 ORDER BY updated_at DESC')
+      .all(profileId)
+    return tasks.map((t: any) => ({
+      ...t,
+      subtasks: db().prepare('SELECT * FROM subtasks WHERE task_id = ? ORDER BY sort_order ASC').all(t.id)
+    }))
+  })
+
+  ipcMain.handle('tasks:archive', (_, id: number) => {
+    db().prepare('UPDATE tasks SET archived = 1, updated_at = unixepoch() WHERE id = ?').run(id)
+    return { success: true }
+  })
+
+  ipcMain.handle('tasks:unarchive', (_, id: number) => {
+    db().prepare('UPDATE tasks SET archived = 0, updated_at = unixepoch() WHERE id = ?').run(id)
+    const updated = db().prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any
+    return {
+      ...updated,
+      subtasks: db().prepare('SELECT * FROM subtasks WHERE task_id = ? ORDER BY sort_order ASC').all(id)
+    }
   })
 
   ipcMain.handle('tasks:create', (_, task: any) => {
@@ -40,7 +64,7 @@ export function registerTaskHandlers(): void {
     const fields: string[] = []
     const values: any[] = []
 
-    const allowed = ['title','notes','notes_html','priority','status','deadline','reminder_at','tags','project_id','recur_rule','recur_next']
+    const allowed = ['title','notes','notes_html','priority','status','deadline','reminder_at','tags','project_id','recur_rule','recur_next','archived']
     for (const key of allowed) {
       if (data[key] !== undefined) {
         fields.push(`${key} = ?`)

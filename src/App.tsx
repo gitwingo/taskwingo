@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useAppStore } from './store/appStore'
+import { useProfileSettings } from './hooks/useProfileSettings'
 import TitleBar from './components/layout/TitleBar'
 import Sidebar from './components/layout/Sidebar'
 import TaskList from './components/tasks/TaskList'
@@ -8,21 +9,28 @@ import ProfileModal from './components/profiles/ProfileModal'
 import PinLock from './components/auth/PinLock'
 import AppSettings from './components/settings/AppSettings'
 import AboutModal from './components/about/AboutModal'
+import UpdateBanner from './components/about/UpdateBanner'
 import { Profile } from './types'
 
 declare global { interface Window { electronAPI: any } }
 
 export default function App() {
   const {
-    theme, profiles, setProfiles, activeProfileId, setActiveProfileId,
+    profiles, setProfiles, activeProfileId, setActiveProfileId,
     isTaskModalOpen, isProfileModalOpen, isSettingsOpen, isAboutOpen,
     unlockedProfiles, unlockProfile, lockProfile
   } = useAppStore()
+  const { theme } = useProfileSettings()
 
   const [pinChecked, setPinChecked] = useState<Record<number, boolean>>({})
   const [profileHasPin, setProfileHasPin] = useState<Record<number, boolean>>({})
   const lastActivityRef = useRef(Date.now())
 
+  // Theme now comes from the active profile (useProfileSettings), so this
+  // effect re-runs both when the theme value itself changes AND whenever
+  // the active profile changes — switching profiles correctly switches
+  // the visible theme instead of leaving the previous profile's theme on
+  // screen, which was the bug being fixed here.
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
@@ -43,7 +51,15 @@ export default function App() {
         const data = await window.electronAPI.profiles.getAll()
         const parsed: Profile[] = data.map((p: any) => ({ ...p, links: JSON.parse(p.links || '[]') }))
         setProfiles(parsed)
-        if (parsed.length > 0 && !activeProfileId) setActiveProfileId(parsed[0].id)
+        // activeProfileId may have been restored from localStorage already
+        // (see appStore.ts), but that restored value is provisional until
+        // verified against what's actually in the database — the profile
+        // could have been deleted in a previous session, or this could be
+        // a fresh install with no stored value at all. Only fall back to
+        // the first profile in the list if the restored ID doesn't match
+        // anything real; otherwise leave the restored selection alone.
+        const restoredProfileStillExists = activeProfileId && parsed.some(p => p.id === activeProfileId)
+        if (parsed.length > 0 && !restoredProfileStillExists) setActiveProfileId(parsed[0].id)
       } catch(e) { console.error('Failed to load profiles', e) }
     }
     loadProfiles()
@@ -95,6 +111,7 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)', overflow: 'hidden' }}>
       <TitleBar />
+      <UpdateBanner />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

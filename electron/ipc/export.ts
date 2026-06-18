@@ -81,7 +81,7 @@ export function registerExportHandlers(): void {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>body{font-family:Arial,sans-serif;margin:40px;color:#111}h1{color:#1a1a2e;margin-bottom:4px}.meta{color:#888;font-size:13px;margin-bottom:24px}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a1a2e;color:white;padding:9px 12px;text-align:left}td{padding:8px 12px;border-bottom:1px solid #eee;vertical-align:top}tr:nth-child(even) td{background:#f9f9f9}</style>
 </head><body>
-<h1>TaskFlow — ${profile.name}</h1>
+<h1>Taskwingo — ${profile.name}</h1>
 <p class="meta">Exported ${new Date().toLocaleString()} · ${tasks.length} tasks</p>
 <table><thead><tr><th>Title</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Project</th></tr></thead>
 <tbody>${taskRows}</tbody></table></body></html>`

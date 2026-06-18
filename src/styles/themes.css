@@ -2,6 +2,7 @@
 
 /* Dark Theme (default) */
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg-primary: #0d0d0f;
   --bg-secondary: #141416;
   --bg-tertiary: #1a1a1e;
@@ -39,6 +40,7 @@
 
 /* Light Theme */
 [data-theme="light"] {
+  color-scheme: light;
   --bg-primary: #f8f8fc;
   --bg-secondary: #f0f0f6;
   --bg-tertiary: #e8e8f0;
@@ -76,6 +78,7 @@
 
 /* Night Theme */
 [data-theme="night"] {
+  color-scheme: dark;
   --bg-primary: #1a1f2e;
   --bg-secondary: #1e2535;
   --bg-tertiary: #232b3e;
@@ -113,6 +116,7 @@
 
 /* Summer Theme */
 [data-theme="summer"] {
+  color-scheme: light;
   --bg-primary: #fff8f0;
   --bg-secondary: #fff2e8;
   --bg-tertiary: #ffebe0;

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAppStore } from '../../store/appStore'
+import { useProfileSettings } from '../../hooks/useProfileSettings'
 import { Theme } from '../../types'
 
 const THEMES: { id: Theme; label: string; color: string }[] = [
@@ -9,8 +9,12 @@ const THEMES: { id: Theme; label: string; color: string }[] = [
   { id: 'summer', label: 'Summer', color: '#ffe4d4' }
 ]
 
+// Standalone compact theme picker (the main one used in Settings is built
+// inline in AppSettings.tsx with bigger preview cards). Kept around for
+// anywhere a smaller inline picker is wanted. Theme is per-profile — see
+// useProfileSettings — so this always affects only the active profile.
 export default function ThemePicker() {
-  const { theme, setTheme } = useAppStore()
+  const { theme, setTheme } = useProfileSettings()
 
   return (
     <div style={{ display: 'flex', gap: 6 }}>

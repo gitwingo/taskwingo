@@ -1,6 +1,6 @@
 {
   "name": "taskwingo",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Taskwingo - Personal Task Manager by Gitwingo",
   "main": "out/main/main.js",
   "author": {
@@ -18,6 +18,11 @@
     "out/**/*",
     "package.json"
   ],
+  "asarUnpack": [
+    "out/renderer/*.png",
+    "out/renderer/*.jpg",
+    "out/renderer/*.ico"
+  ],
   "win": {
     "icon": "build/logo.ico",
     "target": [
@@ -28,7 +33,8 @@
     "oneClick": false,
     "perMachine": true,
     "allowElevation": true,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "artifactName": "${productName}.Setup.${version}.${ext}"
   }
 },
   "scripts": {

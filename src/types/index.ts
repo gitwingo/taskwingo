@@ -3,6 +3,14 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type Theme = 'dark' | 'light' | 'night' | 'summer'
 export type ViewMode = 'list' | 'kanban' | 'calendar'
 export type RecurRule = 'daily' | 'weekly' | 'monthly' | 'weekdays' | null
+export type DateFormat = 'MMM d, yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/yyyy'
+
+export const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string; example: string }[] = [
+  { value: 'MMM d, yyyy', label: 'Month D, Year', example: 'Jun 20, 2026' },
+  { value: 'yyyy-MM-dd',  label: 'YYYY-MM-DD (ISO)', example: '2026-06-20' },
+  { value: 'dd/MM/yyyy',  label: 'DD/MM/YYYY',        example: '20/06/2026' },
+  { value: 'MM/dd/yyyy',  label: 'MM/DD/YYYY',        example: '06/20/2026' }
+]
 
 export interface Profile {
   id: number
@@ -13,6 +21,8 @@ export interface Profile {
   color: string
   accent_color: string
   auto_lock_minutes: number
+  theme: Theme
+  date_format: DateFormat
   created_at: number
   updated_at: number
   pin_hash?: string | null
@@ -49,6 +59,7 @@ export interface Task {
   recur_rule: RecurRule
   recur_next: number | null
   subtasks: Subtask[]
+  archived: number  // 0 = active, 1 = archived
   created_at: number
   updated_at: number
 }

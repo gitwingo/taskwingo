@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useAppStore } from '../../store/appStore'
-import { PRIORITY_CONFIG, STATUS_CONFIG, Attachment } from '../../types'
+import { useProfileSettings } from '../../hooks/useProfileSettings'
+import { PRIORITY_CONFIG, STATUS_CONFIG, Attachment, Priority } from '../../types'
 import { format, isPast, isToday, isTomorrow } from 'date-fns'
 
 function fileIcon(mime: string): string {
@@ -26,11 +27,18 @@ interface Props {
 }
 
 export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
-  const { tasks, upsertTask, attachments, setAttachments, projects } = useAppStore()
+  const { tasks, upsertTask, removeTask, attachments, setAttachments, projects } = useAppStore()
+  const { dateFormat } = useProfileSettings()
   const task = tasks.find(t => t.id === taskId)
   const [localSubtasks, setLocalSubtasks] = useState(task?.subtasks ?? [])
   const [copied, setCopied] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  // Tracks whether the mouse press that's about to end on the overlay
+  // actually *started* on the overlay too. Without this, selecting text
+  // inside the panel and releasing the mouse button outside it (over the
+  // dimmed backdrop) fires a `click` event on the overlay and closes the
+  // whole panel — same root cause as the bug fixed earlier in TaskModal.
+  const mouseDownOnOverlay = useRef(false)
 
   useEffect(() => { setLocalSubtasks(task?.subtasks ?? []) }, [task?.subtasks])
 
@@ -53,8 +61,8 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
     const d = new Date(task.deadline * 1000)
     if (isToday(d)) return { text: 'Today', color: '#f59e0b' }
     if (isTomorrow(d)) return { text: 'Tomorrow', color: 'var(--text-secondary)' }
-    if (isPast(d)) return { text: `Overdue · ${format(d, 'MMM d, yyyy')}`, color: '#ef4444' }
-    return { text: format(d, 'MMM d, yyyy'), color: 'var(--text-secondary)' }
+    if (isPast(d)) return { text: task.status === 'done' ? format(d, dateFormat) : `Overdue · ${format(d, dateFormat)}`, color: task.status === 'done' ? 'var(--text-secondary)' : '#ef4444' }
+    return { text: format(d, dateFormat), color: 'var(--text-secondary)' }
   })()
 
   const toggleSubtask = async (id: number, done: boolean) => {
@@ -63,6 +71,36 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
     setLocalSubtasks(updated)
     upsertTask({ ...task, subtasks: updated })
   }
+
+  const cyclePriority = async () => {
+    const cycle: Record<Priority, Priority> = { urgent: 'high', high: 'medium', medium: 'low', low: 'urgent' }
+    const next = cycle[task.priority]
+    const updated = await window.electronAPI.tasks.update(task.id, { priority: next })
+    if (updated) upsertTask({ ...updated, tags: JSON.parse(updated.tags || '[]'), subtasks: localSubtasks })
+  }
+
+  const handleArchive = async () => {
+    await window.electronAPI.tasks.archive(task.id)
+    removeTask(task.id)
+    onClose()
+  }
+
+  // Make links in notes HTML clickable
+  const makeLinksClickable = useCallback((html: string): string => {
+    return html.replace(
+      /(?<!href=["'])(?<!src=["'])(https?:\/\/[^\s<>"']+)/g,
+      '<a href="$1" style="color:var(--accent);text-decoration:underline;cursor:pointer;" data-ext-link="$1">$1</a>'
+    )
+  }, [])
+
+  const handleNotesClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    const link = target.closest('[data-ext-link]') as HTMLElement | null
+    if (link) {
+      e.preventDefault()
+      window.electronAPI.shell.openExternal(link.dataset.extLink!)
+    }
+  }, [])
 
   const cycleStatus = async () => {
     const cycle = { todo: 'in_progress', in_progress: 'done', done: 'todo' } as const
@@ -77,7 +115,7 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
     lines.push(`Priority: ${task.priority.toUpperCase()} | Status: ${statusCfg.label}`)
     if (project) lines.push(`Project: ${project.name}`)
     if (deadlineLabel) lines.push(`Deadline: ${deadlineLabel.text}`)
-    if (task.reminder_at) lines.push(`Reminder: ${format(new Date(task.reminder_at * 1000), 'MMM d, yyyy · h:mm a')}`)
+    if (task.reminder_at) lines.push(`Reminder: ${format(new Date(task.reminder_at * 1000), dateFormat + ' · h:mm a')}`)
     if (task.recur_rule) lines.push(`Repeat: ${task.recur_rule}`)
     if (task.tags.length > 0) lines.push(`Tags: ${task.tags.join(', ')}`)
     if (task.notes) lines.push(`\n${task.notes}`)
@@ -98,7 +136,9 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay"
+      onMouseDown={e => { mouseDownOnOverlay.current = e.target === e.currentTarget }}
+      onMouseUp={e => { if (mouseDownOnOverlay.current && e.target === e.currentTarget) onClose(); mouseDownOnOverlay.current = false }}>
       <div className="modal-box" style={{ width: 520, padding: 0, overflow: 'hidden', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -126,6 +166,7 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
             {copied ? '✓ Copied' : '⎘ Copy'}
           </button>
           <button onClick={onEdit} className="btn btn-secondary btn-sm">Edit</button>
+          <button onClick={handleArchive} title="Archive task" style={{ padding: '4px 10px', borderRadius: 'var(--radius)', fontSize: 12, fontWeight: 500, background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>📦 Archive</button>
           <button onClick={onClose} style={{ fontSize: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', marginLeft: 2 }}>✕</button>
         </div>
 
@@ -133,9 +174,11 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
         <div ref={contentRef} style={{ overflowY: 'auto', flex: 1, padding: '16px 18px', userSelect: 'text' }}>
           {/* Meta badges */}
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: priorityCfg.bg, color: priorityCfg.color, fontSize: 12, fontWeight: 700, border: `1px solid ${priorityCfg.color}44` }}>
+            <button onClick={cyclePriority} title="Click to change priority" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: priorityCfg.bg, color: priorityCfg.color, fontSize: 12, fontWeight: 700, border: `1px solid ${priorityCfg.color}44`, cursor: 'pointer', transition: 'filter 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15)')}
+              onMouseLeave={e => (e.currentTarget.style.filter = 'none')}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: priorityCfg.color }} />{priorityCfg.label}
-            </span>
+            </button>
             <span style={{ padding: '4px 10px', borderRadius: 6, background: 'var(--bg-tertiary)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
               {statusCfg.icon} {statusCfg.label}
             </span>
@@ -168,7 +211,7 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
                   <span style={{ fontSize: 14 }}>🔔</span>
                   <div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Reminder</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{format(new Date(task.reminder_at * 1000), 'MMM d, yyyy · h:mm a')}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{format(new Date(task.reminder_at * 1000), dateFormat + ' · h:mm a')}</div>
                   </div>
                 </div>
               )}
@@ -191,13 +234,15 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
               {task.notes_html ? (
                 // Render rich HTML
                 <div
-                  dangerouslySetInnerHTML={{ __html: task.notes_html }}
+                  dangerouslySetInnerHTML={{ __html: makeLinksClickable(task.notes_html) }}
+                  onClick={handleNotesClick}
                   style={{
                     fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7,
                     background: 'var(--bg-tertiary)', borderRadius: 'var(--radius)',
-                    padding: '12px 14px', border: '1px solid var(--border-subtle)',
-                    wordBreak: 'break-word', userSelect: 'text'
+                    padding: '12px 14px 12px 18px', border: '1px solid var(--border-subtle)',
+                    wordBreak: 'break-word', userSelect: 'text', overflowX: 'hidden'
                   }}
+                  className="rich-notes-view"
                 />
               ) : (
                 // Plain text fallback
@@ -266,8 +311,8 @@ export default function TaskDetailPanel({ taskId, onClose, onEdit }: Props) {
           )}
 
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 14 }}>
-            Created {format(new Date(task.created_at * 1000), 'MMM d, yyyy')}
-            {task.updated_at !== task.created_at && ` · Updated ${format(new Date(task.updated_at * 1000), 'MMM d, yyyy')}`}
+            Created {format(new Date(task.created_at * 1000), dateFormat)}
+            {task.updated_at !== task.created_at && ` · Updated ${format(new Date(task.updated_at * 1000), dateFormat)}`}
           </div>
         </div>
       </div>

@@ -64,6 +64,27 @@ const migrations: { version: number; up: (db: Database.Database) => void }[] = [
         console.warn('[Migration v2] sort_order init warning:', e.message)
       }
     }
+  },
+  {
+    version: 3,
+    up: (db) => {
+      // Archive support
+      safeAddColumn(db, 'tasks', 'archived', 'INTEGER NOT NULL DEFAULT 0')
+      // Subtask title editing support
+      safeAddColumn(db, 'subtasks', 'updated_at', 'INTEGER DEFAULT (unixepoch())')
+    }
+  },
+  {
+    version: 4,
+    up: (db) => {
+      // Theme and date format were previously global (stored in localStorage,
+      // shared across every profile). Moving them onto the profiles table so
+      // each profile keeps its own preference, matching how accent_color and
+      // auto_lock_minutes already worked. NULL means "not yet set" so the
+      // renderer can fall back to a sensible default on first read.
+      safeAddColumn(db, 'profiles', 'theme',       "TEXT DEFAULT 'dark'")
+      safeAddColumn(db, 'profiles', 'date_format', "TEXT DEFAULT 'MMM d, yyyy'")
+    }
   }
 ]
 

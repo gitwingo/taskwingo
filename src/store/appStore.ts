@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Profile, Task, Theme, TaskFilters, Attachment, Project, ViewMode } from '../types'
+import { Profile, Task, TaskFilters, Attachment, Project, ViewMode } from '../types'
 
 interface AppState {
   profiles: Profile[]
@@ -26,9 +26,6 @@ interface AppState {
 
   filters: TaskFilters
   setFilters: (filters: Partial<TaskFilters>) => void
-
-  theme: Theme
-  setTheme: (theme: Theme) => void
 
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
@@ -60,18 +57,46 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   profiles: [],
-  activeProfileId: null,
+  // Restore the last-active profile ID from localStorage on launch, instead
+  // of always starting at `null`. Previously, activeProfileId reset to
+  // null on every app restart with no persistence at all, and App.tsx's
+  // profile-loading effect would then default to `profiles[0]` (whichever
+  // profile happens to be first in the loaded list) — meaning the app
+  // always opened on profile #1 regardless of which profile was actually
+  // in use last. The loaded value here is provisional: App.tsx still
+  // verifies the restored ID actually exists among the profiles fetched
+  // from the database before relying on it, in case that profile was
+  // deleted since the last session.
+  activeProfileId: (() => {
+    const saved = localStorage.getItem('activeProfileId')
+    return saved ? Number(saved) : null
+  })(),
   setProfiles: (profiles) => set({ profiles }),
-  setActiveProfileId: (id) => set({ activeProfileId: id }),
+  setActiveProfileId: (id) => {
+    // Every profile switch flows through this single setter (sidebar
+    // clicks, profile modal selection, etc.), so persisting here — rather
+    // than at each call site — guarantees localStorage always reflects
+    // the most recent switch without needing to remember to do it
+    // elsewhere. Clearing to null (e.g. on profile deletion) removes the
+    // stored value too, so a deleted profile is never restored as if it
+    // still existed.
+    if (id === null) localStorage.removeItem('activeProfileId')
+    else localStorage.setItem('activeProfileId', String(id))
+    set({ activeProfileId: id })
+  },
   upsertProfile: (profile) => set((s) => ({
     profiles: s.profiles.find(p => p.id === profile.id)
       ? s.profiles.map(p => p.id === profile.id ? profile : p)
       : [...s.profiles, profile]
   })),
-  removeProfile: (id) => set((s) => ({
-    profiles: s.profiles.filter(p => p.id !== id),
-    activeProfileId: s.activeProfileId === id ? null : s.activeProfileId
-  })),
+  removeProfile: (id) => set((s) => {
+    const wasActive = s.activeProfileId === id
+    if (wasActive) localStorage.removeItem('activeProfileId')
+    return {
+      profiles: s.profiles.filter(p => p.id !== id),
+      activeProfileId: wasActive ? null : s.activeProfileId
+    }
+  }),
 
   tasks: [],
   setTasks: (tasks) => set({ tasks }),
@@ -102,9 +127,6 @@ export const useAppStore = create<AppState>((set) => ({
 
   filters: { priority: 'all', status: 'all', search: '', sortBy: 'sort_order', sortDir: 'asc', projectId: 'all' },
   setFilters: (filters) => set((s) => ({ filters: { ...s.filters, ...filters } })),
-
-  theme: (localStorage.getItem('theme') as Theme) ?? 'dark',
-  setTheme: (theme) => { localStorage.setItem('theme', theme); set({ theme }) },
 
   viewMode: (localStorage.getItem('viewMode') as ViewMode) ?? 'list',
   setViewMode: (mode) => { localStorage.setItem('viewMode', mode); set({ viewMode: mode }) },

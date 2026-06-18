@@ -50,7 +50,7 @@ export function registerProfileHandlers(): void {
   ipcMain.handle('profiles:update', (_, id: number, data: any) => {
     const fields: string[] = []
     const values: any[] = []
-    const allowed = ['name','avatar_path','avatar_cache_path','bio','links','color','accent_color','auto_lock_minutes','sort_order']
+    const allowed = ['name','avatar_path','avatar_cache_path','bio','links','color','accent_color','auto_lock_minutes','sort_order','theme','date_format']
     for (const key of allowed) {
       if (data[key] !== undefined) {
         fields.push(`${key} = ?`)

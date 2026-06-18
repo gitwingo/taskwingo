@@ -1,18 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAppStore } from '../../store/appStore'
-import appLogo from '../../public/logo.png'
-import gitwingoLogo from '../../public/gitwingo_logo.jpg'
+
+// Same fix as TitleBar.tsx — files already in Vite's public/ directory must
+// be referenced by root-relative URL, not imported as a JS module. The
+// previous `import appLogo from '../../public/logo.png'` silently failed at
+// build time (Vite logs a warning, the import resolves to undefined), which
+// is exactly why these always rendered their ✦/G fallback glyphs instead of
+// the real logos — the onError handlers below were quietly catching this.
+const appLogoUrl = './logo.png'
+const gitwingoLogoUrl = './gitwingo_logo.jpg'
 
 const LINKS = [
-  { label: 'GitHub', url: 'https://github.com/gitwingo', icon: 'G' },
-  { label: 'Reddit', url: 'https://reddit.com/u/gitwingo', icon: 'R' },
-  { label: 'X / Twitter', url: 'https://x.com/gitwingo', icon: 'X' }
+  { label: 'GitHub', url: 'https://github.com/gitwingo', icon: '💻' },
+  { label: 'Reddit', url: 'https://reddit.com/u/gitwingo', icon: '📙' },
+  { label: 'X / Twitter', url: 'https://x.com/gitwingo', icon: '#️⃣' }
 ]
 
 export default function AboutModal() {
   const { setAboutOpen } = useAppStore()
   const [logoError, setLogoError] = useState(false)
   const [appIconError, setAppIconError] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    window.electronAPI.app.getVersion().then(setAppVersion)
+  }, [])
 
   const openLink = (url: string) => window.electronAPI.shell.openExternal(url)
 
@@ -42,7 +54,7 @@ export default function AboutModal() {
             }}>
               {!appIconError ? (
                 <img
-                  src={appLogo}
+                  src={appLogoUrl}
                   alt="Taskwingo"
                   onError={() => setAppIconError(true)}
                   style={{ width: 52, height: 52, objectFit: 'contain' }}
@@ -52,7 +64,7 @@ export default function AboutModal() {
               )}
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Taskwingo</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Version 1.0.0</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{appVersion ? `Version ${appVersion}` : ''}</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.6 }}>
               A clean personal task manager with multi-profile support,<br />file attachments, and PIN lock.
             </div>
@@ -77,7 +89,7 @@ export default function AboutModal() {
             }}>
               {!logoError ? (
                 <img
-                  src={gitwingoLogo}
+                  src={gitwingoLogoUrl}
                   alt="Gitwingo"
                   onError={() => setLogoError(true)}
                   style={{

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { Task, PRIORITY_CONFIG, STATUS_CONFIG, Attachment } from '../../types'
 import { format, isPast, isToday, isTomorrow } from 'date-fns'
@@ -22,11 +22,41 @@ interface Props {
   onDrop?: (e: React.DragEvent) => void
 }
 
+// Strips block-level tags (headings, lists, paragraphs) so the one-line card
+// preview stays a single line, but keeps inline formatting marks — bold,
+// italic, underline, strikethrough — so things like strikethrough actually
+// show up on the card, not just in the full Task Detail panel.
+function stripBlockTagsKeepInline(html: string): string {
+  return html
+    .replace(/<\/(h1|h2|h3|h4|h5|h6|p|li)>/gi, ' ')   // block boundaries -> single space
+    .replace(/<li[^>]*>/gi, '• ')                      // keep a visual bullet marker
+    .replace(/<\/?(h1|h2|h3|h4|h5|h6|p|ul|ol|div)[^>]*>/gi, '') // drop remaining block tags
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export default function TaskCard({ task, draggable, onDragStart, onDragOver, onDrop }: Props) {
   const { setEditingTaskId, removeTask, upsertTask, attachments, setAttachments, projects } = useAppStore()
   const [hovered, setHovered] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Tracks whether the dropdown should open upward instead of downward.
+  // The menu was always anchored with `top: '100%'` (always below the
+  // trigger button), which clips or fully hides behind the OS taskbar for
+  // any card near the bottom of the viewport — exactly what's visible in
+  // the bug report screenshot, where the menu renders partially behind
+  // the Windows taskbar. Measuring the trigger button's actual position
+  // each time the menu opens and comparing it against remaining viewport
+  // height lets the menu flip upward when there isn't enough room below.
+  const [openUpward, setOpenUpward] = useState(false)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  // Rough estimate of the menu's rendered height: 3 items at ~30px each
+  // (DropItem's own padding) plus the outer container's 4px padding on
+  // both top and bottom, plus the 4px marginTop gap from the trigger.
+  // Doesn't need to be pixel-exact — it only has to be in the right
+  // ballpark to decide which direction has enough room.
+  const ESTIMATED_MENU_HEIGHT = 3 * 30 + 8 + 4
   const [showDetail, setShowDetail] = useState(false) // Fix #2
 
   const taskAttachments: Attachment[] = attachments[task.id] ?? []
@@ -48,7 +78,7 @@ export default function TaskCard({ task, draggable, onDragStart, onDragOver, onD
     const d = new Date(task.deadline * 1000)
     if (isToday(d)) return { text: 'Today', warn: true, overdue: false }
     if (isTomorrow(d)) return { text: 'Tomorrow', warn: false, overdue: false }
-    if (isPast(d)) return { text: format(d, 'MMM d'), warn: false, overdue: true }
+    if (isPast(d)) return { text: format(d, 'MMM d'), warn: false, overdue: task.status !== 'done' }
     return { text: format(d, 'MMM d'), warn: false, overdue: false }
   })()
 
@@ -63,6 +93,20 @@ export default function TaskCard({ task, draggable, onDragStart, onDragOver, onD
     setMenuOpen(false)
     await window.electronAPI.tasks.delete(task.id)
     removeTask(task.id)
+  }
+
+  const handleArchive = async () => {
+    setMenuOpen(false)
+    await window.electronAPI.tasks.archive(task.id)
+    removeTask(task.id)
+  }
+
+  const cyclePriority = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const cycle = { urgent: 'high', high: 'medium', medium: 'low', low: 'urgent' } as const
+    const next = cycle[task.priority]
+    const updated = await window.electronAPI.tasks.update(task.id, { priority: next })
+    if (updated) upsertTask({ ...updated, tags: JSON.parse(updated.tags || '[]'), subtasks: updated.subtasks || subtasks })
   }
 
   // Fix #7: toggle subtask from card
@@ -92,29 +136,50 @@ export default function TaskCard({ task, draggable, onDragStart, onDragOver, onD
           padding: '11px 12px', marginBottom: 6,
           cursor: 'pointer',
           transition: 'background 0.12s, border-color 0.12s',
-          opacity: task.status === 'done' ? 0.6 : 1, position: 'relative'
+          position: 'relative'
+          // No `opacity` here for completed tasks — see the comment a
+          // few lines down at the inner content wrapper for why putting
+          // it on this element specifically broke the dropdown menu.
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          {/* Status toggle */}
-          <button onClick={cycleStatus} title={statusCfg.label} style={{
-            width: 20, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: '50%',
-            border: `1.5px solid ${task.status === 'done' ? '#22c55e' : task.status === 'in_progress' ? 'var(--accent)' : 'var(--border)'}`,
-            background: task.status === 'done' ? 'rgba(34,197,94,0.15)' : task.status === 'in_progress' ? 'rgba(99,102,241,0.1)' : 'transparent',
-            color: task.status === 'done' ? '#22c55e' : task.status === 'in_progress' ? 'var(--accent)' : 'var(--text-muted)',
-            fontSize: 10, cursor: 'pointer', marginTop: 1, transition: 'all 0.15s'
-          }}>{statusCfg.icon}</button>
+          {/* Opacity for completed tasks lives on the wrapper just below
+              — status toggle + content column only, sized to fill the
+              row via flex:1 — not on this outer row and not on a wrapper
+              that also contains the Hover actions div. Any element with
+              opacity < 1 creates a new CSS stacking context for itself
+              and everything inside it, regardless of z-index, which
+              previously trapped the dropdown menu: its z-index could
+              only be compared against siblings inside that same isolated
+              compositing layer, never against sibling task cards further
+              down the list — exactly why the menu rendered visually
+              behind the next card, and visually faded along with it. The
+              dropdown lives inside Hover actions below, which is a true
+              sibling of the dimmed wrapper here, both direct children of
+              this row (and of the outer card, neither of which has
+              opacity set), so it's never trapped in that isolated layer. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0, opacity: task.status === 'done' ? 0.6 : 1 }}>
+            {/* Status toggle */}
+            <button onClick={cycleStatus} title={statusCfg.label} style={{
+              width: 20, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: '50%',
+              border: `1.5px solid ${task.status === 'done' ? '#22c55e' : task.status === 'in_progress' ? 'var(--accent)' : 'var(--border)'}`,
+              background: task.status === 'done' ? 'rgba(34,197,94,0.15)' : task.status === 'in_progress' ? 'rgba(99,102,241,0.1)' : 'transparent',
+              color: task.status === 'done' ? '#22c55e' : task.status === 'in_progress' ? 'var(--accent)' : 'var(--text-muted)',
+              fontSize: 10, cursor: 'pointer', marginTop: 1, transition: 'all 0.15s'
+            }}>{statusCfg.icon}</button>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
             {/* Title + priority */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
               <span style={{ fontSize: 14, fontWeight: 500, color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: task.status === 'done' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                 {task.title}
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, color: priorityCfg.color, textTransform: 'uppercase', flexShrink: 0 }}>
+              <button onClick={cyclePriority} title="Click to change priority" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, color: priorityCfg.color, textTransform: 'uppercase', flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px', borderRadius: 3, transition: 'background 0.12s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = priorityCfg.bg)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: priorityCfg.color }} />{task.priority}
-              </span>
+              </button>
             </div>
 
             {/* Project */}
@@ -124,11 +189,16 @@ export default function TaskCard({ task, draggable, onDragStart, onDragOver, onD
               </div>
             )}
 
-            {/* Notes preview (truncated) */}
-            {task.notes && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>
-                {task.notes}
-              </div>
+            {/* Notes preview (truncated) — uses notes_html when available so
+                inline formatting like strikethrough is visible on the card,
+                not just inside the full Task Detail panel. */}
+            {(task.notes_html || task.notes) && (
+              <div
+                style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}
+                {...(task.notes_html
+                  ? { dangerouslySetInnerHTML: { __html: stripBlockTagsKeepInline(task.notes_html) } }
+                  : { children: task.notes })}
+              />
             )}
 
             {/* Subtask progress bar */}
@@ -197,19 +267,57 @@ export default function TaskCard({ task, draggable, onDragStart, onDragOver, onD
               </div>
             )}
           </div>
+          </div>
+          {/* ^ closes the opacity-dimmed wrapper (status toggle + content
+              column). Hover actions below is a sibling of that wrapper,
+              not a descendant — both are direct children of the outer
+              card, which has no opacity set, so the dropdown menu inside
+              Hover actions is never trapped in an isolated stacking
+              context. */}
 
           {/* Hover actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: hovered || menuOpen ? 1 : 0, transition: 'opacity 0.15s', flexShrink: 0 }}>
             <button onClick={e => { e.stopPropagation(); setEditingTaskId(task.id) }} title="Edit"
               style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, fontSize: 12, cursor: 'pointer', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>✎</button>
             <div style={{ position: 'relative' }}>
-              <button onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+              <button
+                ref={menuTriggerRef}
+                onClick={e => {
+                  e.stopPropagation()
+                  if (!menuOpen) {
+                    // Decide direction BEFORE opening, using the trigger
+                    // button's real on-screen position. window.innerHeight
+                    // is the height of the app's own content area (the
+                    // BrowserWindow's viewport), not the physical screen —
+                    // so this correctly measures "is there room inside my
+                    // own window for this menu," which is what actually
+                    // matters: if the trigger is near the bottom edge of
+                    // the window, flipping the menu upward keeps it fully
+                    // inside the window instead of overflowing past its
+                    // edge, which is what let it render visually behind
+                    // the OS taskbar in the first place.
+                    const rect = menuTriggerRef.current?.getBoundingClientRect()
+                    if (rect) {
+                      const spaceBelow = window.innerHeight - rect.bottom
+                      setOpenUpward(spaceBelow < ESTIMATED_MENU_HEIGHT)
+                    }
+                  }
+                  setMenuOpen(o => !o)
+                }}
                 style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, fontSize: 14, cursor: 'pointer', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>⋮</button>
               {menuOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={e => { e.stopPropagation(); setMenuOpen(false) }} />
-                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', zIndex: 100, minWidth: 120, padding: 4 }}>
+                  <div style={{
+                    position: 'absolute',
+                    ...(openUpward
+                      ? { bottom: '100%', marginBottom: 4 }
+                      : { top: '100%', marginTop: 4 }),
+                    right: 0,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', zIndex: 100, minWidth: 120, padding: 4
+                  }}>
                     <DropItem onClick={() => { setMenuOpen(false); setEditingTaskId(task.id) }}>Edit</DropItem>
+                    <DropItem onClick={handleArchive}>Archive</DropItem>
                     <DropItem onClick={handleDelete} danger>Delete</DropItem>
                   </div>
                 </>
